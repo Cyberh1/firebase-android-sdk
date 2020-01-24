@@ -91,7 +91,7 @@ public abstract class ArrayTransformOperation implements TransformOperation {
    */
   static List<Value> coercedFieldValuesArray(@Nullable FieldValue value) {
     if (value.typeOrder() == TYPE_ORDER_ARRAY) {
-      return value.toProto().getArrayValue().getValuesList();
+      return value.getProto().getArrayValue().getValuesList();
     } else {
       // coerce to empty array.
       return new ArrayList<>();

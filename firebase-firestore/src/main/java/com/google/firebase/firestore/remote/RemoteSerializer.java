@@ -235,7 +235,7 @@ public final class RemoteSerializer {
     com.google.firestore.v1.Document.Builder builder =
         com.google.firestore.v1.Document.newBuilder();
     builder.setName(encodeKey(key));
-    builder.putAllFields(value.toProto().getMapValue().getFieldsMap());
+    builder.putAllFields(value.getFieldsMap());
     return builder.build();
   }
 
@@ -425,7 +425,7 @@ public final class RemoteSerializer {
           (NumericIncrementTransformOperation) transform;
       return DocumentTransform.FieldTransform.newBuilder()
           .setFieldPath(fieldTransform.getFieldPath().canonicalString())
-          .setIncrement(((ObjectValue) incrementOperation.getOperand()).toProto())
+          .setIncrement(((ObjectValue) incrementOperation.getOperand()).getProto())
           .build();
     } else {
       throw fail("Unknown transform: %s", transform);
@@ -849,7 +849,7 @@ public final class RemoteSerializer {
     Cursor.Builder builder = Cursor.newBuilder();
     builder.setBefore(bound.isBefore());
     for (FieldValue component : bound.getPosition()) {
-      builder.addValues(((ObjectValue) component).toProto());
+      builder.addValues(((ObjectValue) component).getProto());
     }
     return builder.build();
   }

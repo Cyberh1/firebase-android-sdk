@@ -117,7 +117,7 @@ public final class RemoteSerializerTest {
 
   private void assertRoundTrip(
       FieldValue value, com.google.firestore.v1.Value proto, ValueTypeCase typeCase) {
-    com.google.firestore.v1.Value actual = ((ObjectValue) value).toProto();
+    com.google.firestore.v1.Value actual = ((ObjectValue) value).getProto();
     assertEquals(typeCase, actual.getValueTypeCase());
     assertEquals(proto, actual);
     assertEquals(value, FieldValue.of(proto));
@@ -434,14 +434,14 @@ public final class RemoteSerializerTest {
                             .setFieldPath("a")
                             .setAppendMissingElements(
                                 ArrayValue.newBuilder()
-                                    .addValues(((ObjectValue) wrap("a")).toProto())
-                                    .addValues(((ObjectValue) wrap(2)).toProto())))
+                                    .addValues(((ObjectValue) wrap("a")).getProto())
+                                    .addValues(((ObjectValue) wrap(2)).getProto())))
                     .addFieldTransforms(
                         DocumentTransform.FieldTransform.newBuilder()
                             .setFieldPath("bar.baz")
                             .setRemoveAllFromArray(
                                 ArrayValue.newBuilder()
-                                    .addValues(((ObjectValue) wrap(map("x", 1))).toProto()))))
+                                    .addValues(((ObjectValue) wrap(map("x", 1))).getProto()))))
             .setCurrentDocument(Precondition.newBuilder().setExists(true))
             .build();
 

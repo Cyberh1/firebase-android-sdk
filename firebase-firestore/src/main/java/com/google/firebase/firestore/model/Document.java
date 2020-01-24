@@ -59,9 +59,9 @@ public final class Document extends MaybeDocument {
     this.objectValue = objectValue;
   }
 
-  /** Serialized form of the document. */
+  /** Serialized form of the document contents. */
   public Map<String, Value> getFieldsMap() {
-    return objectValue.toProto().getMapValue().getFieldsMap();
+    return objectValue.getFieldsMap();
   }
 
   @NonNull

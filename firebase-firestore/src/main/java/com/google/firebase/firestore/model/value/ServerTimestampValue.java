@@ -52,7 +52,7 @@ public final class ServerTimestampValue extends FieldValue {
   }
 
   @Override
-  public Value toProto() {
+  public Value getProto() {
     return null;
   }
 

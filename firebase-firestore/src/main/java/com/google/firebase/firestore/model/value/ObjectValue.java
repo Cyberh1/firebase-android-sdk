@@ -69,6 +69,11 @@ public class ObjectValue extends PrimitiveValue {
     return value != null ? FieldValue.of(value) : null;
   }
 
+
+  public Map<String, Value> getFieldsMap() {
+    return internalValue.getMapValue().getFieldsMap();
+  }
+
   /** Recursively extracts the FieldPaths that are set in this ObjectValue. */
   public FieldMask getFieldMask() {
     return extractFieldMask(internalValue.getMapValue());

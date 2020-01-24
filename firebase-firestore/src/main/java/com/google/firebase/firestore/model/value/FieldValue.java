@@ -75,7 +75,7 @@ public abstract class FieldValue implements Comparable<FieldValue> {
 
   public abstract int typeOrder();
 
-  public abstract Value toProto();
+  public abstract Value getProto();
 
   @Override
   public abstract boolean equals(Object o);
@@ -89,7 +89,7 @@ public abstract class FieldValue implements Comparable<FieldValue> {
   @Override
   public String toString() {
     // does this break canonical IDs?
-    return toProto().toString();
+    return getProto().toString();
   }
 
   int defaultCompareTo(FieldValue other) {

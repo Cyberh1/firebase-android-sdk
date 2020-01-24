@@ -42,17 +42,17 @@ public class NumericIncrementTransformOperation implements TransformOperation {
 
     // Return an integer value only if the previous value and the operand is an integer.
     if (isIntegerValue(baseValue) && isIntegerValue(operand)) {
-      long sum = safeIncrement(baseValue.toProto().getIntegerValue(), operandAsLong());
+      long sum = safeIncrement(baseValue.getProto().getIntegerValue(), operandAsLong());
       return FieldValue.of(Value.newBuilder().setIntegerValue(sum).build());
     } else if (isIntegerValue(baseValue)) {
-      double sum = baseValue.toProto().getIntegerValue() + operandAsDouble();
+      double sum = baseValue.getProto().getIntegerValue() + operandAsDouble();
       return FieldValue.of(Value.newBuilder().setDoubleValue(sum).build());
     } else {
       hardAssert(
           isDoubleValue(baseValue),
           "Expected NumberValue to be of double value, but was ",
           baseValue);
-      double sum = baseValue.toProto().getDoubleValue() + operandAsDouble();
+      double sum = baseValue.getProto().getDoubleValue() + operandAsDouble();
       return FieldValue.of(Value.newBuilder().setDoubleValue(sum).build());
     }
   }
@@ -73,7 +73,7 @@ public class NumericIncrementTransformOperation implements TransformOperation {
    */
   @Override
   public FieldValue computeBaseValue(@Nullable FieldValue previousValue) {
-    return previousValue != null && isType(previousValue.toProto(), TYPE_ORDER_NUMBER)
+    return previousValue != null && isType(previousValue.getProto(), TYPE_ORDER_NUMBER)
         ? previousValue
         : FieldValue.of(Value.newBuilder().setIntegerValue(0).build());
   }
@@ -99,9 +99,9 @@ public class NumericIncrementTransformOperation implements TransformOperation {
 
   private double operandAsDouble() {
     if (isDoubleValue(operand)) {
-      return operand.toProto().getDoubleValue();
+      return operand.getProto().getDoubleValue();
     } else if (isIntegerValue(operand)) {
-      return operand.toProto().getIntegerValue();
+      return operand.getProto().getIntegerValue();
     } else {
       throw fail(
           "Expected 'operand' to be of Number type, but was "
@@ -111,9 +111,9 @@ public class NumericIncrementTransformOperation implements TransformOperation {
 
   private long operandAsLong() {
     if (isDoubleValue(operand)) {
-      return (long) operand.toProto().getDoubleValue();
+      return (long) operand.getProto().getDoubleValue();
     } else if (isIntegerValue(operand)) {
-      return operand.toProto().getIntegerValue();
+      return operand.getProto().getIntegerValue();
     } else {
       throw fail(
           "Expected 'operand' to be of Number type, but was "
@@ -122,10 +122,10 @@ public class NumericIncrementTransformOperation implements TransformOperation {
   }
 
   private boolean isIntegerValue(@Nullable FieldValue value) {
-    return value != null && value.toProto().getValueTypeCase() == Value.ValueTypeCase.INTEGER_VALUE;
+    return value != null && value.getProto().getValueTypeCase() == Value.ValueTypeCase.INTEGER_VALUE;
   }
 
   private boolean isDoubleValue(@Nullable FieldValue value) {
-    return value != null && value.toProto().getValueTypeCase() == Value.ValueTypeCase.DOUBLE_VALUE;
+    return value != null && value.getProto().getValueTypeCase() == Value.ValueTypeCase.DOUBLE_VALUE;
   }
 }

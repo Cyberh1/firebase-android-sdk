@@ -26,7 +26,6 @@ import com.google.firebase.firestore.model.value.FieldValue;
 import com.google.firebase.firestore.model.value.ServerTimestampValue;
 import com.google.firebase.firestore.util.CustomClassMapper;
 import com.google.firestore.v1.ArrayValue;
-import com.google.firestore.v1.MapValue;
 import com.google.firestore.v1.Value;
 import java.util.ArrayList;
 import java.util.Date;
@@ -167,7 +166,7 @@ public class DocumentSnapshot {
     return doc == null
         ? null
         : convertObject(
-            doc.getData().toProto().getMapValue(),
+            doc.getData().getFieldsMap(),
             new FieldValueOptions(
                 serverTimestampBehavior,
                 firestore.getFirestoreSettings().areTimestampsInSnapshotsEnabled()));
@@ -571,7 +570,7 @@ public class DocumentSnapshot {
       case ARRAY_VALUE:
         return convertArray(value.getArrayValue(), options);
       case MAP_VALUE:
-        return convertObject(value.getMapValue(), options);
+        return convertObject(value.getMapValue().getFieldsMap(), options);
       default:
         throw fail("Unknown value type: " + value.getValueTypeCase());
     }
@@ -585,9 +584,9 @@ public class DocumentSnapshot {
     return result;
   }
 
-  private Map<String, Object> convertObject(MapValue mapValue, FieldValueOptions options) {
+  private Map<String, Object> convertObject(Map<String, Value> mapValue, FieldValueOptions options) {
     Map<String, Object> result = new HashMap<>();
-    for (Map.Entry<String, Value> entry : mapValue.getFieldsMap().entrySet()) {
+    for (Map.Entry<String, Value> entry : mapValue.entrySet()) {
       result.put(entry.getKey(), convertValue(entry.getValue(), options));
     }
     return result;
@@ -640,7 +639,7 @@ public class DocumentSnapshot {
     if (doc != null) {
       FieldValue val = doc.getField(fieldPath);
       if (val != null) {
-        return convertValue(val.toProto(), options);
+        return convertValue(val.getProto(), options);
       }
     }
     return null;
