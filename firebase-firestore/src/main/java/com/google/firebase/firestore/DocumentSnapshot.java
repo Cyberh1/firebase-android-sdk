@@ -555,9 +555,7 @@ public class DocumentSnapshot {
       case DOUBLE_VALUE:
         return value.getDoubleValue();
       case TIMESTAMP_VALUE:
-        // convert timestamp
-        return new Timestamp(
-            value.getTimestampValue().getSeconds(), value.getTimestampValue().getNanos());
+        return convertTimestamp(value.getTimestampValue(), options);
       case STRING_VALUE:
         return value.getStringValue();
       case BYTES_VALUE:
@@ -604,11 +602,13 @@ public class DocumentSnapshot {
     }
   }
 
-  private Object convertTimestamp(Timestamp timestamp, FieldValueOptions options) {
+  private Object convertTimestamp(
+      com.google.protobuf.Timestamp timestamp, FieldValueOptions options) {
+    Timestamp result = new Timestamp(timestamp.getSeconds(), timestamp.getNanos());
     if (options.timestampsInSnapshotsEnabled) {
-      return timestamp;
+      return result;
     } else {
-      return timestamp.toDate();
+      return result.toDate();
     }
   }
 
