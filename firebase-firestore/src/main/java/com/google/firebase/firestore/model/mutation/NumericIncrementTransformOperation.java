@@ -122,7 +122,8 @@ public class NumericIncrementTransformOperation implements TransformOperation {
   }
 
   private boolean isIntegerValue(@Nullable FieldValue value) {
-    return value != null && value.getProto().getValueTypeCase() == Value.ValueTypeCase.INTEGER_VALUE;
+    return value != null
+        && value.getProto().getValueTypeCase() == Value.ValueTypeCase.INTEGER_VALUE;
   }
 
   private boolean isDoubleValue(@Nullable FieldValue value) {

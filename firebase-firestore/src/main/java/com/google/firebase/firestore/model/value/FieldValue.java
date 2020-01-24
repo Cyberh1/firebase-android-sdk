@@ -77,6 +77,10 @@ public abstract class FieldValue implements Comparable<FieldValue> {
 
   public abstract Value getProto();
 
+  public boolean equalsValue(Value v) {
+    return this.equals(FieldValue.of(v));
+  }
+
   @Override
   public abstract boolean equals(Object o);
 

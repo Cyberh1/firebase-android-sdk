@@ -16,10 +16,10 @@ package com.google.firebase.firestore.core;
 
 import com.google.firebase.firestore.model.Document;
 import com.google.firebase.firestore.model.FieldPath;
-import com.google.firestore.v1.Value;
+import com.google.firebase.firestore.model.value.FieldValue;
 
 public class KeyFieldInFilter extends FieldFilter {
-  KeyFieldInFilter(FieldPath field, Value value) {
+  KeyFieldInFilter(FieldPath field, FieldValue value) {
     super(field, Operator.IN, value);
     //    ArrayValue arrayValue = (ArrayValue) getValue();
     //    for (FieldValue refValue : arrayValue.getInternalValue()) {

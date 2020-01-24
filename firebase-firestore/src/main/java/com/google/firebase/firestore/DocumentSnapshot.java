@@ -584,7 +584,8 @@ public class DocumentSnapshot {
     return result;
   }
 
-  private Map<String, Object> convertObject(Map<String, Value> mapValue, FieldValueOptions options) {
+  private Map<String, Object> convertObject(
+      Map<String, Value> mapValue, FieldValueOptions options) {
     Map<String, Object> result = new HashMap<>();
     for (Map.Entry<String, Value> entry : mapValue.entrySet()) {
       result.put(entry.getKey(), convertValue(entry.getValue(), options));
