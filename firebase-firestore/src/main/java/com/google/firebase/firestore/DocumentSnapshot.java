@@ -15,21 +15,17 @@
 package com.google.firebase.firestore;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.firebase.firestore.util.Assert.hardAssert;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.model.DatabaseId;
 import com.google.firebase.firestore.model.Document;
 import com.google.firebase.firestore.model.DocumentKey;
-import com.google.firebase.firestore.model.value.ArrayValue;
 import com.google.firebase.firestore.model.value.FieldValue;
 import com.google.firebase.firestore.model.value.ObjectValue;
-import com.google.firebase.firestore.model.value.ReferenceValue;
 import com.google.firebase.firestore.model.value.ServerTimestampValue;
-import com.google.firebase.firestore.model.value.TimestampValue;
 import com.google.firebase.firestore.util.CustomClassMapper;
-import com.google.firebase.firestore.util.Logger;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -547,19 +543,19 @@ public class DocumentSnapshot {
   }
 
   @Nullable
-  private Object convertValue(FieldValue value, FieldValueOptions options) {
-    if (value instanceof ObjectValue) {
+  private Object convertValue(Object value, FieldValueOptions options) {
+    if (value instanceof Map<?, ?>) {
       return convertObject((ObjectValue) value, options);
-    } else if (value instanceof ArrayValue) {
-      return convertArray((ArrayValue) value, options);
-    } else if (value instanceof ReferenceValue) {
-      return convertReference((ReferenceValue) value);
-    } else if (value instanceof TimestampValue) {
-      return convertTimestamp((TimestampValue) value, options);
+    } else if (value instanceof List) {
+      return convertArray((List<Object>) value, options);
+      //    } else if (value instanceof ReferenceValue) {
+      //      return convertReference((ReferenceValue) value);
+    } else if (value instanceof Timestamp) {
+      return convertTimestamp((Timestamp) value, options);
     } else if (value instanceof ServerTimestampValue) {
       return convertServerTimestamp((ServerTimestampValue) value, options);
     } else {
-      return value.value();
+      return value;
     }
   }
 
@@ -574,8 +570,7 @@ public class DocumentSnapshot {
     }
   }
 
-  private Object convertTimestamp(TimestampValue value, FieldValueOptions options) {
-    Timestamp timestamp = value.value();
+  private Object convertTimestamp(Timestamp timestamp, FieldValueOptions options) {
     if (options.timestampsInSnapshotsEnabled) {
       return timestamp;
     } else {
@@ -583,37 +578,41 @@ public class DocumentSnapshot {
     }
   }
 
-  private Object convertReference(ReferenceValue value) {
-    DocumentKey key = value.value();
-    DatabaseId refDatabase = value.getDatabaseId();
-    DatabaseId database = this.firestore.getDatabaseId();
-    if (!refDatabase.equals(database)) {
-      // TODO: Somehow support foreign references.
-      Logger.warn(
-          "DocumentSnapshot",
-          "Document %s contains a document reference within a different database "
-              + "(%s/%s) which is not supported. It will be treated as a reference in "
-              + "the current database (%s/%s) instead.",
-          key.getPath(),
-          refDatabase.getProjectId(),
-          refDatabase.getDatabaseId(),
-          database.getProjectId(),
-          database.getDatabaseId());
-    }
-    return new DocumentReference(key, firestore);
+  private Object convertReference(FieldValue value) {
+    //    DocumentKey key = value.value();
+    //    DatabaseId refDatabase = value.getDatabaseId();
+    //    DatabaseId database = this.firestore.getDatabaseId();
+    //    if (!refDatabase.equals(database)) {
+    //      // TODO: Somehow support foreign references.
+    //      Logger.warn(
+    //          "DocumentSnapshot",
+    //          "Document %s contains a document reference within a different database "
+    //              + "(%s/%s) which is not supported. It will be treated as a reference in "
+    //              + "the current database (%s/%s) instead.",
+    //          key.getPath(),
+    //          refDatabase.getProjectId(),
+    //          refDatabase.getDatabaseId(),
+    //          database.getProjectId(),
+    //          database.getDatabaseId());
+    //    }
+    //    return new DocumentReference(key, firestore);
+    return null;
   }
 
   private Map<String, Object> convertObject(ObjectValue objectValue, FieldValueOptions options) {
+    Object object = objectValue.value();
+    hardAssert(object instanceof Map, "Expected value to be of Timestamp type");
+    Map<String, Object> map = (Map<String, Object>) object;
     Map<String, Object> result = new HashMap<>();
-    for (Map.Entry<String, FieldValue> entry : objectValue.getInternalValue()) {
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
       result.put(entry.getKey(), convertValue(entry.getValue(), options));
     }
     return result;
   }
 
-  private List<Object> convertArray(ArrayValue arrayValue, FieldValueOptions options) {
-    ArrayList<Object> result = new ArrayList<>(arrayValue.getInternalValue().size());
-    for (FieldValue v : arrayValue.getInternalValue()) {
+  private List<Object> convertArray(List<Object> arrayValue, FieldValueOptions options) {
+    ArrayList<Object> result = new ArrayList<>(arrayValue.size());
+    for (Object v : arrayValue) {
       result.add(convertValue(v, options));
     }
     return result;

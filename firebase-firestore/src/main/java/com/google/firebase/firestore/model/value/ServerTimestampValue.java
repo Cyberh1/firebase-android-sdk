@@ -17,6 +17,7 @@ package com.google.firebase.firestore.model.value;
 import androidx.annotation.Nullable;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firestore.v1.Value;
 
 /**
  * Represents a locally-applied Server Timestamp.
@@ -47,6 +48,11 @@ public final class ServerTimestampValue extends FieldValue {
   @Override
   @Nullable
   public Object value() {
+    return null;
+  }
+
+  @Override
+  public Value toProto() {
     return null;
   }
 

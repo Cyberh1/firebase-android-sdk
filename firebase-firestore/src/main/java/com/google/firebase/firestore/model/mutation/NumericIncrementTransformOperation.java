@@ -14,15 +14,15 @@
 
 package com.google.firebase.firestore.model.mutation;
 
+import static com.google.firebase.firestore.model.value.FieldValue.TYPE_ORDER_NUMBER;
+import static com.google.firebase.firestore.model.value.ProtoValues.isType;
 import static com.google.firebase.firestore.util.Assert.fail;
 import static com.google.firebase.firestore.util.Assert.hardAssert;
 
 import androidx.annotation.Nullable;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.model.value.DoubleValue;
 import com.google.firebase.firestore.model.value.FieldValue;
-import com.google.firebase.firestore.model.value.IntegerValue;
-import com.google.firebase.firestore.model.value.NumberValue;
+import com.google.firestore.v1.Value;
 
 /**
  * Implements the backend semantics for locally computed NUMERIC_ADD (increment) transforms.
@@ -30,30 +30,30 @@ import com.google.firebase.firestore.model.value.NumberValue;
  * Long.MAX_VALUE/Long.MIN_VALUE.
  */
 public class NumericIncrementTransformOperation implements TransformOperation {
-  private NumberValue operand;
+  private FieldValue operand;
 
-  public NumericIncrementTransformOperation(NumberValue operand) {
+  public NumericIncrementTransformOperation(FieldValue operand) {
     this.operand = operand;
   }
 
   @Override
   public FieldValue applyToLocalView(@Nullable FieldValue previousValue, Timestamp localWriteTime) {
-    NumberValue baseValue = computeBaseValue(previousValue);
+    FieldValue baseValue = computeBaseValue(previousValue);
 
     // Return an integer value only if the previous value and the operand is an integer.
-    if (baseValue instanceof IntegerValue && operand instanceof IntegerValue) {
-      long sum = safeIncrement(((IntegerValue) baseValue).getInternalValue(), operandAsLong());
-      return IntegerValue.valueOf(sum);
-    } else if (baseValue instanceof IntegerValue) {
-      double sum = ((IntegerValue) baseValue).getInternalValue() + operandAsDouble();
-      return DoubleValue.valueOf(sum);
+    if (isIntegerValue(baseValue) && isIntegerValue(operand)) {
+      long sum = safeIncrement(baseValue.toProto().getIntegerValue(), operandAsLong());
+      return FieldValue.of(Value.newBuilder().setIntegerValue(sum).build());
+    } else if (isIntegerValue(baseValue)) {
+      double sum = baseValue.toProto().getIntegerValue() + operandAsDouble();
+      return FieldValue.of(Value.newBuilder().setDoubleValue(sum).build());
     } else {
       hardAssert(
-          baseValue instanceof DoubleValue,
-          "Expected NumberValue to be of type DoubleValue, but was ",
-          previousValue.getClass().getCanonicalName());
-      double sum = ((DoubleValue) baseValue).getInternalValue() + operandAsDouble();
-      return DoubleValue.valueOf(sum);
+          isDoubleValue(baseValue),
+          "Expected NumberValue to be of double value, but was ",
+          baseValue);
+      double sum = baseValue.toProto().getDoubleValue() + operandAsDouble();
+      return FieldValue.of(Value.newBuilder().setDoubleValue(sum).build());
     }
   }
 
@@ -72,10 +72,10 @@ public class NumericIncrementTransformOperation implements TransformOperation {
    * otherwise returning a coerced IntegerValue of 0.
    */
   @Override
-  public NumberValue computeBaseValue(@Nullable FieldValue previousValue) {
-    return previousValue instanceof NumberValue
-        ? (NumberValue) previousValue
-        : IntegerValue.valueOf(0L);
+  public FieldValue computeBaseValue(@Nullable FieldValue previousValue) {
+    return previousValue != null && isType(previousValue.toProto(), TYPE_ORDER_NUMBER)
+        ? previousValue
+        : FieldValue.of(Value.newBuilder().setIntegerValue(0).build());
   }
 
   /**
@@ -98,10 +98,10 @@ public class NumericIncrementTransformOperation implements TransformOperation {
   }
 
   private double operandAsDouble() {
-    if (operand instanceof DoubleValue) {
-      return ((DoubleValue) operand).getInternalValue();
-    } else if (operand instanceof IntegerValue) {
-      return ((IntegerValue) operand).getInternalValue();
+    if (isDoubleValue(operand)) {
+      return operand.toProto().getDoubleValue();
+    } else if (isIntegerValue(operand)) {
+      return operand.toProto().getIntegerValue();
     } else {
       throw fail(
           "Expected 'operand' to be of Number type, but was "
@@ -110,14 +110,22 @@ public class NumericIncrementTransformOperation implements TransformOperation {
   }
 
   private long operandAsLong() {
-    if (operand instanceof DoubleValue) {
-      return (long) ((DoubleValue) operand).getInternalValue();
-    } else if (operand instanceof IntegerValue) {
-      return ((IntegerValue) operand).getInternalValue();
+    if (isDoubleValue(operand)) {
+      return (long) operand.toProto().getDoubleValue();
+    } else if (isIntegerValue(operand)) {
+      return operand.toProto().getIntegerValue();
     } else {
       throw fail(
           "Expected 'operand' to be of Number type, but was "
               + operand.getClass().getCanonicalName());
     }
+  }
+
+  private boolean isIntegerValue(@Nullable FieldValue value) {
+    return value != null && value.toProto().getValueTypeCase() == Value.ValueTypeCase.INTEGER_VALUE;
+  }
+
+  private boolean isDoubleValue(@Nullable FieldValue value) {
+    return value != null && value.toProto().getValueTypeCase() == Value.ValueTypeCase.DOUBLE_VALUE;
   }
 }

@@ -18,8 +18,6 @@ import static com.google.firebase.firestore.util.Assert.hardAssert;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.google.firebase.firestore.model.protovalue.ObjectValue;
-import com.google.firebase.firestore.model.protovalue.PrimitiveValue;
 import com.google.firebase.firestore.util.Util;
 import com.google.firestore.v1.Value;
 
@@ -77,6 +75,8 @@ public abstract class FieldValue implements Comparable<FieldValue> {
    */
   @Nullable
   public abstract Object value();
+
+  public abstract Value toProto();
 
   @Override
   public abstract boolean equals(Object o);

@@ -20,8 +20,8 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
 import com.google.firebase.firestore.ValueUtil;
-import com.google.firebase.firestore.model.protovalue.ObjectValue;
 import com.google.firebase.firestore.model.value.FieldValue;
+import com.google.firebase.firestore.model.value.ObjectValue;
 import com.google.firestore.v1.Value;
 import java.util.Collections;
 import org.junit.Test;

@@ -16,7 +16,6 @@ package com.google.firebase.firestore.model.mutation;
 
 import androidx.annotation.Nullable;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.model.value.ArrayValue;
 import com.google.firebase.firestore.model.value.FieldValue;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,19 +79,19 @@ public abstract class ArrayTransformOperation implements TransformOperation {
   }
 
   /** Applies this ArrayTransformOperation against the specified previousValue. */
-  protected abstract ArrayValue apply(@Nullable FieldValue previousValue);
+  protected abstract FieldValue apply(@Nullable FieldValue previousValue);
 
   /**
    * Inspects the provided value, returning an ArrayList copy of the internal array if it's an
    * ArrayValue and an empty ArrayList if it's null or any other type of FSTFieldValue.
    */
   static ArrayList<FieldValue> coercedFieldValuesArray(@Nullable FieldValue value) {
-    if (value instanceof ArrayValue) {
-      return new ArrayList<>(((ArrayValue) value).getInternalValue());
-    } else {
-      // coerce to empty array.
-      return new ArrayList<>();
-    }
+    //    if (value instanceof ArrayValue) {
+    //      return new ArrayList<>(((ArrayValue) value).getInternalValue());
+    //    } else {
+    // coerce to empty array.
+    return new ArrayList<>();
+    // }
   }
 
   /** An array union transform operation. */
@@ -102,14 +101,15 @@ public abstract class ArrayTransformOperation implements TransformOperation {
     }
 
     @Override
-    protected ArrayValue apply(@Nullable FieldValue previousValue) {
-      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
-      for (FieldValue element : getElements()) {
-        if (!result.contains(element)) {
-          result.add(element);
-        }
-      }
-      return ArrayValue.fromList(result);
+    protected FieldValue apply(@Nullable FieldValue previousValue) {
+      //      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
+      //      for (FieldValue element : getElements()) {
+      //        if (!result.contains(element)) {
+      //          result.add(element);
+      //        }
+      //      }
+      //      return ArrayValue.fromList(result);
+      return null;
     }
   }
 
@@ -120,12 +120,13 @@ public abstract class ArrayTransformOperation implements TransformOperation {
     }
 
     @Override
-    protected ArrayValue apply(@Nullable FieldValue previousValue) {
-      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
-      for (FieldValue element : getElements()) {
-        result.removeAll(Collections.singleton(element));
-      }
-      return ArrayValue.fromList(result);
+    protected FieldValue apply(@Nullable FieldValue previousValue) {
+      //      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
+      //      for (FieldValue element : getElements()) {
+      //        result.removeAll(Collections.singleton(element));
+      //      }
+      //      return ArrayValue.fromList(result);
+      return null;
     }
   }
 }

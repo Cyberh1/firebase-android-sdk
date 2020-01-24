@@ -50,8 +50,7 @@ import com.google.firebase.firestore.model.ResourcePath;
 import com.google.firebase.firestore.model.SnapshotVersion;
 import com.google.firebase.firestore.model.mutation.Mutation;
 import com.google.firebase.firestore.model.value.FieldValue;
-import com.google.firebase.firestore.model.value.NullValue;
-import com.google.firebase.firestore.model.value.ReferenceValue;
+import com.google.firebase.firestore.model.value.ObjectValue;
 import com.google.firebase.firestore.remote.WatchChange.WatchTargetChange;
 import com.google.firebase.firestore.remote.WatchChange.WatchTargetChangeType;
 import com.google.firebase.firestore.testutil.TestUtil;
@@ -118,10 +117,10 @@ public final class RemoteSerializerTest {
 
   private void assertRoundTrip(
       FieldValue value, com.google.firestore.v1.Value proto, ValueTypeCase typeCase) {
-    com.google.firestore.v1.Value actual = serializer.encodeValue(value);
+    com.google.firestore.v1.Value actual = ((ObjectValue) value).toProto();
     assertEquals(typeCase, actual.getValueTypeCase());
     assertEquals(proto, actual);
-    assertEquals(value, serializer.decodeValue(proto));
+    assertEquals(value, FieldValue.of(proto));
   }
 
   @Test
@@ -435,14 +434,14 @@ public final class RemoteSerializerTest {
                             .setFieldPath("a")
                             .setAppendMissingElements(
                                 ArrayValue.newBuilder()
-                                    .addValues(serializer.encodeValue(wrap("a")))
-                                    .addValues(serializer.encodeValue(wrap(2)))))
+                                    .addValues(((ObjectValue) wrap("a")).toProto())
+                                    .addValues(((ObjectValue) wrap(2)).toProto())))
                     .addFieldTransforms(
                         DocumentTransform.FieldTransform.newBuilder()
                             .setFieldPath("bar.baz")
                             .setRemoveAllFromArray(
                                 ArrayValue.newBuilder()
-                                    .addValues(serializer.encodeValue(wrap(map("x", 1)))))))
+                                    .addValues(((ObjectValue) wrap(map("x", 1))).toProto()))))
             .setCurrentDocument(Precondition.newBuilder().setExists(true))
             .build();
 

@@ -33,7 +33,6 @@ import com.google.firebase.firestore.remote.RemoteSerializer;
 import com.google.protobuf.ByteString;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /** Serializer for values stored in the LocalStore. */
 public final class LocalSerializer {
@@ -99,10 +98,7 @@ public final class LocalSerializer {
     builder.setName(rpcSerializer.encodeKey(document.getKey()));
 
     ObjectValue value = document.getData();
-    for (Map.Entry<String, FieldValue> entry : value.getInternalValue()) {
-      builder.putFields(entry.getKey(), rpcSerializer.encodeValue(entry.getValue()));
-    }
-
+    builder.putAllFields(document.getProto().getFieldsMap());
     Timestamp updateTime = document.getVersion().getTimestamp();
     builder.setUpdateTime(rpcSerializer.encodeTimestamp(updateTime));
     return builder.build();
@@ -120,7 +116,7 @@ public final class LocalSerializer {
             ? Document.DocumentState.COMMITTED_MUTATIONS
             : Document.DocumentState.SYNCED,
         document,
-        rpcSerializer::decodeValue);
+        proto -> FieldValue.of(proto));
   }
 
   /** Encodes a NoDocument value to the equivalent proto. */

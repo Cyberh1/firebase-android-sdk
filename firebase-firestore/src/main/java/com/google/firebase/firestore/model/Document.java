@@ -93,19 +93,22 @@ public final class Document extends MaybeDocument {
   @NonNull
   public ObjectValue getData() {
     if (objectValue == null) {
-      hardAssert(proto != null && converter != null, "Expected proto and converter to be non-null");
-
-      ObjectValue.Builder result = ObjectValue.newBuilder();
-      for (Map.Entry<String, com.google.firestore.v1.Value> entry :
-          proto.getFieldsMap().entrySet()) {
-        FieldPath path = FieldPath.fromSingleSegment(entry.getKey());
-        FieldValue value = converter.apply(entry.getValue());
-        result.set(path, value);
-      }
-      objectValue = result.build();
-
-      // Once objectValue is computed, values inside the fieldValueCache are no longer accessed.
-      fieldValueCache = null;
+      //      hardAssert(proto != null && converter != null, "Expected proto and converter to be
+      // non-null");
+      //
+      //      ObjectValue.Builder result = ObjectValue.newBuilder();
+      //      for (Map.Entry<String, com.google.firestore.v1.Value> entry :
+      //          proto.getFieldsMap().entrySet()) {
+      //        FieldPath path = FieldPath.fromSingleSegment(entry.getKey());
+      //        FieldValue value = converter.apply(entry.getValue());
+      //        result.set(path, value);
+      //      }
+      //      objectValue = result.build();
+      //
+      //      // Once objectValue is computed, values inside the fieldValueCache are no longer
+      // accessed.
+      //      fieldValueCache = null;
+      return null;
     }
 
     return objectValue;

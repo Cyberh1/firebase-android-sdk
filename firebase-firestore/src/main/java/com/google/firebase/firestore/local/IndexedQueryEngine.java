@@ -22,7 +22,6 @@ import com.google.firebase.database.collection.ImmutableSortedMap;
 import com.google.firebase.database.collection.ImmutableSortedSet;
 import com.google.firebase.firestore.core.FieldFilter;
 import com.google.firebase.firestore.core.Filter;
-import com.google.firebase.firestore.core.Filter.Operator;
 import com.google.firebase.firestore.core.IndexRange;
 import com.google.firebase.firestore.core.Query;
 import com.google.firebase.firestore.model.Document;
@@ -31,14 +30,8 @@ import com.google.firebase.firestore.model.DocumentKey;
 import com.google.firebase.firestore.model.FieldPath;
 import com.google.firebase.firestore.model.MaybeDocument;
 import com.google.firebase.firestore.model.SnapshotVersion;
-import com.google.firebase.firestore.model.value.ArrayValue;
-import com.google.firebase.firestore.model.value.BooleanValue;
-import com.google.firebase.firestore.model.value.DoubleValue;
-import com.google.firebase.firestore.model.value.FieldValue;
-import com.google.firebase.firestore.model.value.ObjectValue;
 import com.google.firebase.firestore.util.Assert;
-import java.util.Arrays;
-import java.util.List;
+import com.google.firestore.v1.Value;
 
 /**
  * An indexed implementation of {@link QueryEngine} which performs fairly efficient queries.
@@ -84,10 +77,10 @@ public class IndexedQueryEngine implements QueryEngine {
   private static final double HIGH_SELECTIVITY = 1.0;
   private static final double LOW_SELECTIVITY = 0.5;
 
-  // ArrayValue and ObjectValue are currently considered low cardinality because we don't index
-  // them uniquely.
-  private static final List<Class> lowCardinalityTypes =
-      Arrays.asList(BooleanValue.class, ArrayValue.class, ObjectValue.class);
+  //  // ArrayValue and ObjectValue are currently considered low cardinality because we don't index
+  //  // them uniquely.
+  //  private static final List<Class> lowCardinalityTypes =
+  //      Arrays.asList(BooleanValue.class, ArrayValue.class, ObjectValue.class);
 
   private final SQLiteCollectionIndex collectionIndex;
   private LocalDocumentsView localDocuments;
@@ -163,20 +156,23 @@ public class IndexedQueryEngine implements QueryEngine {
    * @return a number from 0.0 to 1.0 (inclusive), where higher numbers indicate higher selectivity
    */
   private static double estimateFilterSelectivity(Filter filter) {
-    hardAssert(filter instanceof FieldFilter, "Filter type expected to be FieldFilter");
-    FieldFilter fieldFilter = (FieldFilter) filter;
-    if (fieldFilter.getValue().equals(null) || fieldFilter.getValue().equals(DoubleValue.NaN)) {
-      return HIGH_SELECTIVITY;
-    } else {
-      double operatorSelectivity =
-          fieldFilter.getOperator().equals(Operator.EQUAL) ? HIGH_SELECTIVITY : LOW_SELECTIVITY;
-      double typeSelectivity =
-          lowCardinalityTypes.contains(fieldFilter.getValue().getClass())
-              ? LOW_SELECTIVITY
-              : HIGH_SELECTIVITY;
-
-      return typeSelectivity * operatorSelectivity;
-    }
+    //    hardAssert(filter instanceof FieldFilter, "Filter type expected to be FieldFilter");
+    //    FieldFilter fieldFilter = (FieldFilter) filter;
+    //    if (fieldFilter.getValue().equals(null) || fieldFilter.getValue().equals(DoubleValue.NaN))
+    // {
+    //      return HIGH_SELECTIVITY;
+    //    } else {
+    //      double operatorSelectivity =
+    //          fieldFilter.getOperator().equals(Operator.EQUAL) ? HIGH_SELECTIVITY :
+    // LOW_SELECTIVITY;
+    //      double typeSelectivity =
+    //          lowCardinalityTypes.contains(fieldFilter.getValue().getClass())
+    //              ? LOW_SELECTIVITY
+    //              : HIGH_SELECTIVITY;
+    //
+    //      return typeSelectivity * operatorSelectivity;
+    //    }
+    return 0;
   }
 
   /**
@@ -222,19 +218,19 @@ public class IndexedQueryEngine implements QueryEngine {
     IndexRange.Builder indexRange = IndexRange.builder().setFieldPath(filter.getField());
     if (filter instanceof FieldFilter) {
       FieldFilter fieldFilter = (FieldFilter) filter;
-      FieldValue filterValue = fieldFilter.getValue();
+      Value filterValue = fieldFilter.getValue();
       switch (fieldFilter.getOperator()) {
-        case EQUAL:
-          indexRange.setStart(filterValue).setEnd(filterValue);
-          break;
-        case LESS_THAN_OR_EQUAL:
-        case LESS_THAN:
-          indexRange.setEnd(filterValue);
-          break;
-        case GREATER_THAN:
-        case GREATER_THAN_OR_EQUAL:
-          indexRange.setStart(filterValue);
-          break;
+          //        case EQUAL:
+          //          indexRange.setStart(filterValue).setEnd(filterValue);
+          //          break;
+          //        case LESS_THAN_OR_EQUAL:
+          //        case LESS_THAN:
+          //          indexRange.setEnd(filterValue);
+          //          break;
+          //        case GREATER_THAN:
+          //        case GREATER_THAN_OR_EQUAL:
+          //          indexRange.setStart(filterValue);
+          //          break;
         default:
           // TODO: Add support for ARRAY_CONTAINS.
           throw Assert.fail("Unexpected operator in query filter");

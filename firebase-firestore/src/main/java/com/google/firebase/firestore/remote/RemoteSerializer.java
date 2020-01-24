@@ -14,14 +14,13 @@
 
 package com.google.firebase.firestore.remote;
 
+import static com.google.firebase.firestore.model.value.FieldValue.TYPE_ORDER_NUMBER;
 import static com.google.firebase.firestore.util.Assert.fail;
 import static com.google.firebase.firestore.util.Assert.hardAssert;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.Blob;
-import com.google.firebase.firestore.GeoPoint;
 import com.google.firebase.firestore.core.Bound;
 import com.google.firebase.firestore.core.FieldFilter;
 import com.google.firebase.firestore.core.Filter;
@@ -52,19 +51,8 @@ import com.google.firebase.firestore.model.mutation.SetMutation;
 import com.google.firebase.firestore.model.mutation.TransformMutation;
 import com.google.firebase.firestore.model.mutation.TransformOperation;
 import com.google.firebase.firestore.model.mutation.VerifyMutation;
-import com.google.firebase.firestore.model.value.ArrayValue;
-import com.google.firebase.firestore.model.value.BlobValue;
-import com.google.firebase.firestore.model.value.BooleanValue;
-import com.google.firebase.firestore.model.value.DoubleValue;
 import com.google.firebase.firestore.model.value.FieldValue;
-import com.google.firebase.firestore.model.value.GeoPointValue;
-import com.google.firebase.firestore.model.value.IntegerValue;
-import com.google.firebase.firestore.model.value.NullValue;
-import com.google.firebase.firestore.model.value.NumberValue;
 import com.google.firebase.firestore.model.value.ObjectValue;
-import com.google.firebase.firestore.model.value.ReferenceValue;
-import com.google.firebase.firestore.model.value.StringValue;
-import com.google.firebase.firestore.model.value.TimestampValue;
 import com.google.firebase.firestore.remote.WatchChange.ExistenceFilterWatchChange;
 import com.google.firebase.firestore.remote.WatchChange.WatchTargetChange;
 import com.google.firebase.firestore.remote.WatchChange.WatchTargetChangeType;
@@ -91,9 +79,8 @@ import com.google.firestore.v1.Target;
 import com.google.firestore.v1.Target.DocumentsTarget;
 import com.google.firestore.v1.Target.QueryTarget;
 import com.google.firestore.v1.Value;
-import com.google.protobuf.ByteString;
 import com.google.protobuf.Int32Value;
-import com.google.type.LatLng;
+import com.google.protobuf.NullValue;
 import io.grpc.Status;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,19 +125,6 @@ public final class RemoteSerializer {
     } else {
       return new SnapshotVersion(decodeTimestamp(proto));
     }
-  }
-
-  // GeoPoint
-
-  private LatLng encodeGeoPoint(GeoPoint geoPoint) {
-    return LatLng.newBuilder()
-        .setLatitude(geoPoint.getLatitude())
-        .setLongitude(geoPoint.getLongitude())
-        .build();
-  }
-
-  private GeoPoint decodeGeoPoint(LatLng latLng) {
-    return new GeoPoint(latLng.getLatitude(), latLng.getLongitude());
   }
 
   // Names and Keys
@@ -244,138 +218,15 @@ public final class RemoteSerializer {
 
   // Values
 
-  /**
-   * Converts the FieldValue model passed into the Value proto equivalent.
-   *
-   * @param value the model to convert
-   * @return The proto representation of the model
-   */
-  public com.google.firestore.v1.Value encodeValue(FieldValue value) {
-    com.google.firestore.v1.Value.Builder builder = com.google.firestore.v1.Value.newBuilder();
-
-    if (value instanceof NullValue) {
-      builder.setNullValueValue(0);
-      return builder.build();
-    }
-
-    Object encodedValue = value.value();
-    hardAssert(encodedValue != null, "Encoded field value should not be null.");
-
-    if (value instanceof BooleanValue) {
-      builder.setBooleanValue((Boolean) encodedValue);
-    } else if (value instanceof IntegerValue) {
-      builder.setIntegerValue((Long) encodedValue);
-    } else if (value instanceof DoubleValue) {
-      builder.setDoubleValue((Double) encodedValue);
-    } else if (value instanceof StringValue) {
-      builder.setStringValue((String) encodedValue);
-    } else if (value instanceof ArrayValue) {
-      builder.setArrayValue(encodeArrayValue((ArrayValue) value));
-    } else if (value instanceof ObjectValue) {
-      builder.setMapValue(encodeMapValue((ObjectValue) value));
-    } else if (value instanceof TimestampValue) {
-      Timestamp t = ((TimestampValue) value).getInternalValue();
-      builder.setTimestampValue(encodeTimestamp(t));
-    } else if (value instanceof GeoPointValue) {
-      GeoPoint geoPoint = (GeoPoint) encodedValue;
-      builder.setGeoPointValue(encodeGeoPoint(geoPoint));
-    } else if (value instanceof BlobValue) {
-      builder.setBytesValue(((Blob) encodedValue).toByteString());
-    } else if (value instanceof ReferenceValue) {
-      ReferenceValue ref = (ReferenceValue) value;
-      DatabaseId id = ref.getDatabaseId();
-      DocumentKey key = (DocumentKey) encodedValue;
-      builder.setReferenceValue(encodeResourceName(id, key.getPath()));
-    } else {
-      throw fail("Can't serialize %s", value);
-    }
-
-    return builder.build();
-  }
-
-  /**
-   * Converts from the proto Value format to the model FieldValue format
-   *
-   * @return The model equivalent of the proto data.
-   */
-  public FieldValue decodeValue(com.google.firestore.v1.Value proto) {
-    switch (proto.getValueTypeCase()) {
-      case NULL_VALUE:
-        return NullValue.nullValue();
-      case BOOLEAN_VALUE:
-        return BooleanValue.valueOf(proto.getBooleanValue());
-      case INTEGER_VALUE:
-        return IntegerValue.valueOf(proto.getIntegerValue());
-      case DOUBLE_VALUE:
-        return DoubleValue.valueOf(proto.getDoubleValue());
-      case TIMESTAMP_VALUE:
-        Timestamp timestamp = decodeTimestamp(proto.getTimestampValue());
-        return TimestampValue.valueOf(timestamp);
-      case GEO_POINT_VALUE:
-        LatLng latLng = proto.getGeoPointValue();
-        return GeoPointValue.valueOf(decodeGeoPoint(latLng));
-      case BYTES_VALUE:
-        ByteString bytes = proto.getBytesValue();
-        return BlobValue.valueOf(Blob.fromByteString(bytes));
-      case REFERENCE_VALUE:
-        ResourcePath resourceName = decodeResourceName(proto.getReferenceValue());
-        DatabaseId id =
-            DatabaseId.forDatabase(resourceName.getSegment(1), resourceName.getSegment(3));
-        DocumentKey key = DocumentKey.fromPath(extractLocalPathFromResourceName(resourceName));
-        return ReferenceValue.valueOf(id, key);
-      case STRING_VALUE:
-        return StringValue.valueOf(proto.getStringValue());
-      case ARRAY_VALUE:
-        return decodeArrayValue(proto.getArrayValue());
-      case MAP_VALUE:
-        return decodeMapValue(proto.getMapValue());
-      default:
-        throw fail("Unknown value %s", proto);
-    }
-  }
-
-  private com.google.firestore.v1.ArrayValue encodeArrayValue(ArrayValue value) {
-    List<FieldValue> internalValue = value.getInternalValue();
-    com.google.firestore.v1.ArrayValue.Builder arrayBuilder =
-        com.google.firestore.v1.ArrayValue.newBuilder();
-    for (FieldValue subValue : internalValue) {
-      arrayBuilder.addValues(encodeValue(subValue));
-    }
-    return arrayBuilder.build();
-  }
-
-  private ArrayValue decodeArrayValue(com.google.firestore.v1.ArrayValue protoArray) {
-    int count = protoArray.getValuesCount();
-    List<FieldValue> wrappedList = new ArrayList<>(count);
-    for (int i = 0; i < count; i++) {
-      wrappedList.add(decodeValue(protoArray.getValues(i)));
-    }
-    return ArrayValue.fromList(wrappedList);
-  }
-
-  private MapValue encodeMapValue(ObjectValue value) {
-    MapValue.Builder builder = MapValue.newBuilder();
-    for (Map.Entry<String, FieldValue> entry : value.getInternalValue()) {
-      builder.putFields(entry.getKey(), encodeValue(entry.getValue()));
-    }
-    return builder.build();
-  }
-
-  private ObjectValue decodeMapValue(MapValue value) {
-    return decodeFields(value.getFieldsMap());
-  }
-
   // PORTING NOTE: There's no encodeFields here because there's no way to write it that doesn't
   // involve creating a temporary map.
 
   public ObjectValue decodeFields(Map<String, com.google.firestore.v1.Value> fields) {
-    ObjectValue.Builder result = ObjectValue.newBuilder();
-    for (Map.Entry<String, com.google.firestore.v1.Value> entry : fields.entrySet()) {
-      FieldPath path = FieldPath.fromSingleSegment(entry.getKey());
-      FieldValue value = decodeValue(entry.getValue());
-      result.set(path, value);
-    }
-    return result.build();
+    return (ObjectValue)
+        FieldValue.of(
+            Value.newBuilder()
+                .setMapValue(MapValue.newBuilder().putAllFields(fields).build())
+                .build());
   }
 
   // Documents
@@ -384,9 +235,7 @@ public final class RemoteSerializer {
     com.google.firestore.v1.Document.Builder builder =
         com.google.firestore.v1.Document.newBuilder();
     builder.setName(encodeKey(key));
-    for (Map.Entry<String, FieldValue> entry : value.getInternalValue()) {
-      builder.putFields(entry.getKey(), encodeValue(entry.getValue()));
-    }
+    builder.putAllFields(value.toProto().getMapValue().getFieldsMap());
     return builder.build();
   }
 
@@ -409,7 +258,11 @@ public final class RemoteSerializer {
     hardAssert(
         !version.equals(SnapshotVersion.NONE), "Got a document response with no snapshot version");
     return new Document(
-        key, version, Document.DocumentState.SYNCED, response.getFound(), this::decodeValue);
+        key,
+        version,
+        Document.DocumentState.SYNCED,
+        response.getFound(),
+        proto -> FieldValue.of(proto));
   }
 
   private NoDocument decodeMissingDocument(BatchGetDocumentsResponse response) {
@@ -567,7 +420,7 @@ public final class RemoteSerializer {
           (NumericIncrementTransformOperation) transform;
       return DocumentTransform.FieldTransform.newBuilder()
           .setFieldPath(fieldTransform.getFieldPath().canonicalString())
-          .setIncrement(encodeValue(incrementOperation.getOperand()))
+          .setIncrement(((ObjectValue) incrementOperation.getOperand()).toProto())
           .build();
     } else {
       throw fail("Unknown transform: %s", transform);
@@ -579,7 +432,7 @@ public final class RemoteSerializer {
     com.google.firestore.v1.ArrayValue.Builder arrayBuilder =
         com.google.firestore.v1.ArrayValue.newBuilder();
     for (FieldValue subValue : elements) {
-      arrayBuilder.addValues(encodeValue(subValue));
+      arrayBuilder.addValues(((ObjectValue) subValue).toProto());
     }
     return arrayBuilder.build();
   }
@@ -607,15 +460,14 @@ public final class RemoteSerializer {
                 decodeArrayTransformElements(fieldTransform.getRemoveAllFromArray())));
       case INCREMENT:
         {
-          FieldValue operand = decodeValue(fieldTransform.getIncrement());
+          FieldValue operand = FieldValue.of(fieldTransform.getIncrement());
           hardAssert(
-              operand instanceof NumberValue,
+              operand.typeOrder() == TYPE_ORDER_NUMBER,
               "Expected NUMERIC_ADD transform to be of number type, but was %s",
               operand.getClass().getCanonicalName());
           return new FieldTransform(
               FieldPath.fromServerFormat(fieldTransform.getFieldPath()),
-              new NumericIncrementTransformOperation(
-                  (NumberValue) decodeValue(fieldTransform.getIncrement())));
+              new NumericIncrementTransformOperation(FieldValue.of(fieldTransform.getIncrement())));
         }
       default:
         throw fail("Unknown FieldTransform proto: %s", fieldTransform);
@@ -627,7 +479,7 @@ public final class RemoteSerializer {
     int count = elementsProto.getValuesCount();
     List<FieldValue> result = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
-      result.add(decodeValue(elementsProto.getValues(i)));
+      result.add(FieldValue.of(elementsProto.getValues(i)));
     }
     return result;
   }
@@ -648,7 +500,7 @@ public final class RemoteSerializer {
     if (transformResultsCount > 0) {
       transformResults = new ArrayList<>(transformResultsCount);
       for (int i = 0; i < transformResultsCount; i++) {
-        transformResults.add(decodeValue(proto.getTransformResults(i)));
+        transformResults.add(FieldValue.of(proto.getTransformResults(i)));
       }
     }
     return new MutationResult(version, transformResults);
@@ -883,10 +735,10 @@ public final class RemoteSerializer {
     if (filter.getOperator() == Filter.Operator.EQUAL) {
       UnaryFilter.Builder unaryProto = UnaryFilter.newBuilder();
       unaryProto.setField(encodeFieldPath(filter.getField()));
-      if (filter.getValue().equals(DoubleValue.NaN)) {
+      if (Double.isNaN(filter.getValue().getDoubleValue())) {
         unaryProto.setOp(UnaryFilter.Operator.IS_NAN);
         return StructuredQuery.Filter.newBuilder().setUnaryFilter(unaryProto).build();
-      } else if (filter.getValue().equals(NullValue.nullValue())) {
+      } else if (filter.getValue().getValueTypeCase() == Value.ValueTypeCase.NULL_VALUE) {
         unaryProto.setOp(UnaryFilter.Operator.IS_NULL);
         return StructuredQuery.Filter.newBuilder().setUnaryFilter(unaryProto).build();
       }
@@ -894,7 +746,7 @@ public final class RemoteSerializer {
     StructuredQuery.FieldFilter.Builder proto = StructuredQuery.FieldFilter.newBuilder();
     proto.setField(encodeFieldPath(filter.getField()));
     proto.setOp(encodeFieldFilterOperator(filter.getOperator()));
-    proto.setValue(encodeValue(filter.getValue()));
+    proto.setValue(filter.getValue());
     return StructuredQuery.Filter.newBuilder().setFieldFilter(proto).build();
   }
 
@@ -902,18 +754,23 @@ public final class RemoteSerializer {
   FieldFilter decodeFieldFilter(StructuredQuery.FieldFilter proto) {
     FieldPath fieldPath = FieldPath.fromServerFormat(proto.getField().getFieldPath());
     FieldFilter.Operator filterOperator = decodeFieldFilterOperator(proto.getOp());
-    FieldValue value = decodeValue(proto.getValue());
-    return FieldFilter.create(fieldPath, filterOperator, value);
+    return FieldFilter.create(fieldPath, filterOperator, proto.getValue());
   }
 
   private Filter decodeUnaryFilter(StructuredQuery.UnaryFilter proto) {
     FieldPath fieldPath = FieldPath.fromServerFormat(proto.getField().getFieldPath());
     switch (proto.getOp()) {
       case IS_NAN:
-        return FieldFilter.create(fieldPath, Filter.Operator.EQUAL, DoubleValue.NaN);
+        return FieldFilter.create(
+            fieldPath,
+            Filter.Operator.EQUAL,
+            Value.newBuilder().setDoubleValue(Double.NaN).build());
 
       case IS_NULL:
-        return FieldFilter.create(fieldPath, Filter.Operator.EQUAL, NullValue.nullValue());
+        return FieldFilter.create(
+            fieldPath,
+            Filter.Operator.EQUAL,
+            Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build());
 
       default:
         throw fail("Unrecognized UnaryFilter.operator %d", proto.getOp());
@@ -1007,7 +864,7 @@ public final class RemoteSerializer {
     Cursor.Builder builder = Cursor.newBuilder();
     builder.setBefore(bound.isBefore());
     for (FieldValue component : bound.getPosition()) {
-      builder.addValues(encodeValue(component));
+      builder.addValues(((ObjectValue) component).toProto());
     }
     return builder.build();
   }
@@ -1018,7 +875,7 @@ public final class RemoteSerializer {
 
     for (int i = 0; i < valuesCount; i++) {
       Value valueProto = proto.getValues(i);
-      indexComponents.add(decodeValue(valueProto));
+      indexComponents.add(FieldValue.of(valueProto));
     }
     return new Bound(indexComponents, proto.getBefore());
   }
@@ -1072,7 +929,7 @@ public final class RemoteSerializer {
                 version,
                 Document.DocumentState.SYNCED,
                 docChange.getDocument(),
-                this::decodeValue);
+                proto -> FieldValue.of(proto));
         watchChange = new WatchChange.DocumentChange(added, removed, document.getKey(), document);
         break;
       case DOCUMENT_DELETE:
