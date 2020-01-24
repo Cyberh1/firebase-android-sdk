@@ -17,9 +17,10 @@ package com.google.firebase.firestore.model.value;
 import static com.google.firebase.firestore.util.Assert.hardAssert;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import com.google.firebase.firestore.util.Util;
+import com.google.firestore.v1.MapValue;
 import com.google.firestore.v1.Value;
+import java.util.Map;
 
 /**
  * A field value represents a data type as stored by Firestore.
@@ -67,14 +68,12 @@ public abstract class FieldValue implements Comparable<FieldValue> {
     }
   }
 
-  public abstract int typeOrder();
+  public static ObjectValue of(Map<String, Value> fieldsMap) {
+    return new ObjectValue(
+        Value.newBuilder().setMapValue(MapValue.newBuilder().putAllFields(fieldsMap)).build());
+  }
 
-  /**
-   * Converts a FieldValue into the value that users will see in document snapshots using the
-   * default deserialization options.
-   */
-  @Nullable
-  public abstract Object value();
+  public abstract int typeOrder();
 
   public abstract Value toProto();
 
@@ -89,11 +88,11 @@ public abstract class FieldValue implements Comparable<FieldValue> {
 
   @Override
   public String toString() {
-    Object val = value();
-    return val == null ? "null" : val.toString();
+    // does this break canonical IDs?
+    return toProto().toString();
   }
 
-  protected int defaultCompareTo(FieldValue other) {
+  int defaultCompareTo(FieldValue other) {
     int cmp = Util.compareIntegers(typeOrder(), other.typeOrder());
     hardAssert(cmp != 0, "Default compareTo should not be used for values of same type.");
     return cmp;

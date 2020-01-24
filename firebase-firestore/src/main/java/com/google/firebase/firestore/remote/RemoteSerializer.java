@@ -261,8 +261,7 @@ public final class RemoteSerializer {
         key,
         version,
         Document.DocumentState.SYNCED,
-        response.getFound(),
-        proto -> FieldValue.of(proto));
+        FieldValue.of(response.getFound().getFieldsMap()));
   }
 
   private NoDocument decodeMissingDocument(BatchGetDocumentsResponse response) {
@@ -405,15 +404,21 @@ public final class RemoteSerializer {
           .build();
     } else if (transform instanceof ArrayTransformOperation.Union) {
       ArrayTransformOperation.Union union = (ArrayTransformOperation.Union) transform;
+      com.google.firestore.v1.ArrayValue.Builder arrayBuilder =
+          com.google.firestore.v1.ArrayValue.newBuilder();
+      arrayBuilder.addAllValues(union.getElements());
       return DocumentTransform.FieldTransform.newBuilder()
           .setFieldPath(fieldTransform.getFieldPath().canonicalString())
-          .setAppendMissingElements(encodeArrayTransformElements(union.getElements()))
+          .setAppendMissingElements(arrayBuilder.build())
           .build();
     } else if (transform instanceof ArrayTransformOperation.Remove) {
       ArrayTransformOperation.Remove remove = (ArrayTransformOperation.Remove) transform;
+      com.google.firestore.v1.ArrayValue.Builder arrayBuilder =
+          com.google.firestore.v1.ArrayValue.newBuilder();
+      arrayBuilder.addAllValues(remove.getElements());
       return DocumentTransform.FieldTransform.newBuilder()
           .setFieldPath(fieldTransform.getFieldPath().canonicalString())
-          .setRemoveAllFromArray(encodeArrayTransformElements(remove.getElements()))
+          .setRemoveAllFromArray(arrayBuilder.build())
           .build();
     } else if (transform instanceof NumericIncrementTransformOperation) {
       NumericIncrementTransformOperation incrementOperation =
@@ -425,16 +430,6 @@ public final class RemoteSerializer {
     } else {
       throw fail("Unknown transform: %s", transform);
     }
-  }
-
-  private com.google.firestore.v1.ArrayValue encodeArrayTransformElements(
-      List<FieldValue> elements) {
-    com.google.firestore.v1.ArrayValue.Builder arrayBuilder =
-        com.google.firestore.v1.ArrayValue.newBuilder();
-    for (FieldValue subValue : elements) {
-      arrayBuilder.addValues(((ObjectValue) subValue).toProto());
-    }
-    return arrayBuilder.build();
   }
 
   private FieldTransform decodeFieldTransform(DocumentTransform.FieldTransform fieldTransform) {
@@ -452,12 +447,12 @@ public final class RemoteSerializer {
         return new FieldTransform(
             FieldPath.fromServerFormat(fieldTransform.getFieldPath()),
             new ArrayTransformOperation.Union(
-                decodeArrayTransformElements(fieldTransform.getAppendMissingElements())));
+                fieldTransform.getAppendMissingElements().getValuesList()));
       case REMOVE_ALL_FROM_ARRAY:
         return new FieldTransform(
             FieldPath.fromServerFormat(fieldTransform.getFieldPath()),
             new ArrayTransformOperation.Remove(
-                decodeArrayTransformElements(fieldTransform.getRemoveAllFromArray())));
+                fieldTransform.getRemoveAllFromArray().getValuesList()));
       case INCREMENT:
         {
           FieldValue operand = FieldValue.of(fieldTransform.getIncrement());
@@ -472,16 +467,6 @@ public final class RemoteSerializer {
       default:
         throw fail("Unknown FieldTransform proto: %s", fieldTransform);
     }
-  }
-
-  private List<FieldValue> decodeArrayTransformElements(
-      com.google.firestore.v1.ArrayValue elementsProto) {
-    int count = elementsProto.getValuesCount();
-    List<FieldValue> result = new ArrayList<>(count);
-    for (int i = 0; i < count; i++) {
-      result.add(FieldValue.of(elementsProto.getValues(i)));
-    }
-    return result;
   }
 
   public MutationResult decodeMutationResult(
@@ -928,8 +913,7 @@ public final class RemoteSerializer {
                 key,
                 version,
                 Document.DocumentState.SYNCED,
-                docChange.getDocument(),
-                proto -> FieldValue.of(proto));
+                FieldValue.of(docChange.getDocument().getFieldsMap()));
         watchChange = new WatchChange.DocumentChange(added, removed, document.getKey(), document);
         break;
       case DOCUMENT_DELETE:

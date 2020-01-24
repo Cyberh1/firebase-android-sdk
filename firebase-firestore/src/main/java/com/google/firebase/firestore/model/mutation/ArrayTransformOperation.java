@@ -14,9 +14,13 @@
 
 package com.google.firebase.firestore.model.mutation;
 
+import static com.google.firebase.firestore.model.value.FieldValue.TYPE_ORDER_ARRAY;
+
 import androidx.annotation.Nullable;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.model.value.FieldValue;
+import com.google.firestore.v1.ArrayValue;
+import com.google.firestore.v1.Value;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,13 +31,13 @@ import java.util.List;
  * <p>Implementations are: ArrayTransformOperation.Union and ArrayTransformOperation.Remove
  */
 public abstract class ArrayTransformOperation implements TransformOperation {
-  private final List<FieldValue> elements;
+  private final List<Value> elements;
 
-  ArrayTransformOperation(List<FieldValue> elements) {
+  ArrayTransformOperation(List<Value> elements) {
     this.elements = Collections.unmodifiableList(elements);
   }
 
-  public List<FieldValue> getElements() {
+  public List<Value> getElements() {
     return elements;
   }
 
@@ -85,48 +89,50 @@ public abstract class ArrayTransformOperation implements TransformOperation {
    * Inspects the provided value, returning an ArrayList copy of the internal array if it's an
    * ArrayValue and an empty ArrayList if it's null or any other type of FSTFieldValue.
    */
-  static ArrayList<FieldValue> coercedFieldValuesArray(@Nullable FieldValue value) {
-    //    if (value instanceof ArrayValue) {
-    //      return new ArrayList<>(((ArrayValue) value).getInternalValue());
-    //    } else {
-    // coerce to empty array.
-    return new ArrayList<>();
-    // }
+  static List<Value> coercedFieldValuesArray(@Nullable FieldValue value) {
+    if (value.typeOrder() == TYPE_ORDER_ARRAY) {
+      return value.toProto().getArrayValue().getValuesList();
+    } else {
+      // coerce to empty array.
+      return new ArrayList<>();
+    }
   }
 
   /** An array union transform operation. */
   public static class Union extends ArrayTransformOperation {
-    public Union(List<FieldValue> elements) {
+    public Union(List<Value> elements) {
       super(elements);
     }
 
     @Override
     protected FieldValue apply(@Nullable FieldValue previousValue) {
-      //      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
-      //      for (FieldValue element : getElements()) {
-      //        if (!result.contains(element)) {
-      //          result.add(element);
-      //        }
-      //      }
-      //      return ArrayValue.fromList(result);
-      return null;
+      List<Value> result = coercedFieldValuesArray(previousValue);
+      for (Value element : getElements()) {
+        if (!result.contains(element)) {
+          result.add(element);
+        }
+      }
+      return FieldValue.of(
+          Value.newBuilder().setArrayValue(ArrayValue.newBuilder().addAllValues(result)).build());
     }
   }
 
   /** An array remove transform operation. */
   public static class Remove extends ArrayTransformOperation {
-    public Remove(List<FieldValue> elements) {
+    public Remove(List<Value> elements) {
       super(elements);
     }
 
     @Override
     protected FieldValue apply(@Nullable FieldValue previousValue) {
-      //      ArrayList<FieldValue> result = coercedFieldValuesArray(previousValue);
-      //      for (FieldValue element : getElements()) {
-      //        result.removeAll(Collections.singleton(element));
-      //      }
-      //      return ArrayValue.fromList(result);
-      return null;
+      List<Value> result = coercedFieldValuesArray(previousValue);
+      for (Value element : getElements()) {
+        if (!result.contains(element)) {
+          result.removeAll(Collections.singleton(element));
+        }
+      }
+      return FieldValue.of(
+          Value.newBuilder().setArrayValue(ArrayValue.newBuilder().addAllValues(result)).build());
     }
   }
 }

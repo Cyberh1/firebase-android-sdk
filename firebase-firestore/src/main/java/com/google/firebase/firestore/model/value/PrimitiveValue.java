@@ -14,22 +14,8 @@
 
 package com.google.firebase.firestore.model.value;
 
-import static com.google.firebase.firestore.util.Assert.fail;
-
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.Blob;
-import com.google.firebase.firestore.GeoPoint;
-import com.google.firebase.firestore.model.DocumentKey;
-import com.google.firebase.firestore.model.ResourcePath;
-import com.google.firebase.firestore.util.Assert;
-import com.google.firestore.v1.ArrayValue;
 import com.google.firestore.v1.Value;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class PrimitiveValue extends FieldValue {
   final Value internalValue;
@@ -41,71 +27,6 @@ public class PrimitiveValue extends FieldValue {
   @Override
   public int typeOrder() {
     return ProtoValues.typeOrder(internalValue);
-  }
-
-  @Nullable
-  @Override
-  public Object value() {
-    return convertValue(internalValue);
-  }
-
-  @Nullable
-  private Object convertValue(Value value) {
-    switch (value.getValueTypeCase()) {
-      case NULL_VALUE:
-        return null;
-      case BOOLEAN_VALUE:
-        return value.getBooleanValue();
-      case INTEGER_VALUE:
-        return value.getIntegerValue();
-      case DOUBLE_VALUE:
-        return value.getDoubleValue();
-      case TIMESTAMP_VALUE:
-        return new Timestamp(
-            value.getTimestampValue().getSeconds(), value.getTimestampValue().getNanos());
-      case STRING_VALUE:
-        return value.getStringValue();
-      case BYTES_VALUE:
-        return Blob.fromByteString(value.getBytesValue());
-      case REFERENCE_VALUE:
-        return convertReference(value.getReferenceValue());
-      case GEO_POINT_VALUE:
-        return new GeoPoint(
-            value.getGeoPointValue().getLatitude(), value.getGeoPointValue().getLongitude());
-      case ARRAY_VALUE:
-        return convertArray(value.getArrayValue());
-      case MAP_VALUE:
-        return convertMap(value.getMapValue());
-      default:
-        throw fail("Unknown value type: " + value.getValueTypeCase());
-    }
-  }
-
-  private Object convertReference(String value) {
-    // TODO(mrschmidt): Move `value()` and `convertValue()` to DocumentSnapshot, which would
-    // allow us to validate that the resource name points to the current project.
-    ResourcePath resourceName = ResourcePath.fromString(value);
-    Assert.hardAssert(
-        resourceName.length() > 4 && resourceName.getSegment(4).equals("documents"),
-        "Tried to deserialize invalid key %s",
-        resourceName);
-    return DocumentKey.fromPath(resourceName.popFirst(5));
-  }
-
-  private List<Object> convertArray(ArrayValue arrayValue) {
-    ArrayList<Object> result = new ArrayList<>(arrayValue.getValuesCount());
-    for (Value v : arrayValue.getValuesList()) {
-      result.add(convertValue(v));
-    }
-    return result;
-  }
-
-  private Map<String, Object> convertMap(com.google.firestore.v1.MapValue mapValue) {
-    Map<String, Object> result = new HashMap<>();
-    for (Map.Entry<String, Value> entry : mapValue.getFieldsMap().entrySet()) {
-      result.put(entry.getKey(), convertValue(entry.getValue()));
-    }
-    return result;
   }
 
   @Override

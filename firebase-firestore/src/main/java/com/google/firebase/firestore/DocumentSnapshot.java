@@ -15,7 +15,7 @@
 package com.google.firebase.firestore;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.firebase.firestore.util.Assert.hardAssert;
+import static com.google.firebase.firestore.util.Assert.fail;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,9 +23,11 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.model.Document;
 import com.google.firebase.firestore.model.DocumentKey;
 import com.google.firebase.firestore.model.value.FieldValue;
-import com.google.firebase.firestore.model.value.ObjectValue;
 import com.google.firebase.firestore.model.value.ServerTimestampValue;
 import com.google.firebase.firestore.util.CustomClassMapper;
+import com.google.firestore.v1.ArrayValue;
+import com.google.firestore.v1.MapValue;
+import com.google.firestore.v1.Value;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -165,7 +167,7 @@ public class DocumentSnapshot {
     return doc == null
         ? null
         : convertObject(
-            doc.getData(),
+            doc.getData().toProto().getMapValue(),
             new FieldValueOptions(
                 serverTimestampBehavior,
                 firestore.getFirestoreSettings().areTimestampsInSnapshotsEnabled()));
@@ -543,20 +545,52 @@ public class DocumentSnapshot {
   }
 
   @Nullable
-  private Object convertValue(Object value, FieldValueOptions options) {
-    if (value instanceof Map<?, ?>) {
-      return convertObject((ObjectValue) value, options);
-    } else if (value instanceof List) {
-      return convertArray((List<Object>) value, options);
-      //    } else if (value instanceof ReferenceValue) {
-      //      return convertReference((ReferenceValue) value);
-    } else if (value instanceof Timestamp) {
-      return convertTimestamp((Timestamp) value, options);
-    } else if (value instanceof ServerTimestampValue) {
-      return convertServerTimestamp((ServerTimestampValue) value, options);
-    } else {
-      return value;
+  private Object convertValue(Value value, FieldValueOptions options) {
+    switch (value.getValueTypeCase()) {
+      case NULL_VALUE:
+        return null;
+      case BOOLEAN_VALUE:
+        return value.getBooleanValue();
+      case INTEGER_VALUE:
+        return value.getIntegerValue();
+      case DOUBLE_VALUE:
+        return value.getDoubleValue();
+      case TIMESTAMP_VALUE:
+        // convert timestamp
+        return new Timestamp(
+            value.getTimestampValue().getSeconds(), value.getTimestampValue().getNanos());
+      case STRING_VALUE:
+        return value.getStringValue();
+      case BYTES_VALUE:
+        return Blob.fromByteString(value.getBytesValue());
+      case REFERENCE_VALUE:
+        return convertReference(value.getReferenceValue());
+      case GEO_POINT_VALUE:
+        return new GeoPoint(
+            value.getGeoPointValue().getLatitude(), value.getGeoPointValue().getLongitude());
+      case ARRAY_VALUE:
+        return convertArray(value.getArrayValue(), options);
+      case MAP_VALUE:
+        return convertObject(value.getMapValue(), options);
+      default:
+        throw fail("Unknown value type: " + value.getValueTypeCase());
     }
+  }
+
+  private List<Object> convertArray(ArrayValue arrayValue, FieldValueOptions options) {
+    ArrayList<Object> result = new ArrayList<>(arrayValue.getValuesCount());
+    for (Value v : arrayValue.getValuesList()) {
+      result.add(convertValue(v, options));
+    }
+    return result;
+  }
+
+  private Map<String, Object> convertObject(MapValue mapValue, FieldValueOptions options) {
+    Map<String, Object> result = new HashMap<>();
+    for (Map.Entry<String, Value> entry : mapValue.getFieldsMap().entrySet()) {
+      result.put(entry.getKey(), convertValue(entry.getValue(), options));
+    }
+    return result;
   }
 
   private Object convertServerTimestamp(ServerTimestampValue value, FieldValueOptions options) {
@@ -578,44 +612,25 @@ public class DocumentSnapshot {
     }
   }
 
-  private Object convertReference(FieldValue value) {
-    //    DocumentKey key = value.value();
-    //    DatabaseId refDatabase = value.getDatabaseId();
-    //    DatabaseId database = this.firestore.getDatabaseId();
-    //    if (!refDatabase.equals(database)) {
-    //      // TODO: Somehow support foreign references.
-    //      Logger.warn(
-    //          "DocumentSnapshot",
-    //          "Document %s contains a document reference within a different database "
-    //              + "(%s/%s) which is not supported. It will be treated as a reference in "
-    //              + "the current database (%s/%s) instead.",
-    //          key.getPath(),
-    //          refDatabase.getProjectId(),
-    //          refDatabase.getDatabaseId(),
-    //          database.getProjectId(),
-    //          database.getDatabaseId());
-    //    }
-    //    return new DocumentReference(key, firestore);
+  private Object convertReference(String value) {
+    //        DocumentKey key = value.value();
+    //        DatabaseId refDatabase = value.getDatabaseId();
+    //        DatabaseId database = this.firestore.getDatabaseId();
+    //        if (!refDatabase.equals(database)) {
+    //          // TODO: Somehow support foreign references.
+    //          Logger.warn(
+    //              "DocumentSnapshot",
+    //              "Document %s contains a document reference within a different database "
+    //                  + "(%s/%s) which is not supported. It will be treated as a reference in "
+    //                  + "the current database (%s/%s) instead.",
+    //              key.getPath(),
+    //              refDatabase.getProjectId(),
+    //              refDatabase.getDatabaseId(),
+    //              database.getProjectId(),
+    //              database.getDatabaseId());
+    //        }
+    //        return new DocumentReference(key, firestore);
     return null;
-  }
-
-  private Map<String, Object> convertObject(ObjectValue objectValue, FieldValueOptions options) {
-    Object object = objectValue.value();
-    hardAssert(object instanceof Map, "Expected value to be of Timestamp type");
-    Map<String, Object> map = (Map<String, Object>) object;
-    Map<String, Object> result = new HashMap<>();
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      result.put(entry.getKey(), convertValue(entry.getValue(), options));
-    }
-    return result;
-  }
-
-  private List<Object> convertArray(List<Object> arrayValue, FieldValueOptions options) {
-    ArrayList<Object> result = new ArrayList<>(arrayValue.size());
-    for (Object v : arrayValue) {
-      result.add(convertValue(v, options));
-    }
-    return result;
   }
 
   @Nullable
@@ -625,7 +640,7 @@ public class DocumentSnapshot {
     if (doc != null) {
       FieldValue val = doc.getField(fieldPath);
       if (val != null) {
-        return convertValue(val, options);
+        return convertValue(val.toProto(), options);
       }
     }
     return null;
